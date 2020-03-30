@@ -1,33 +1,52 @@
 package main
 
 import (
+	"context"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
 	"time"
+
+	"github.com/idawud/gomicroservice/handlers"
 )
 
 func main() {
-	http.HandleFunc("/", func(rw http.ResponseWriter, r *http.Request) {
-		log.Println("Main endpoint, Hello world")
-		d, err := ioutil.ReadAll(r.Body)
-		if err != nil{
-			/* //same as below
-			rw.WriteHeader(http.StatusBadRequest)
-			rw.Write([]byte("Ooops Error"))
-			 */
-			http.Error(rw, "Oops Error", http.StatusBadRequest)
-			return
-		}
-		fmt.Fprintf(rw, "Hello %s", d)
-	})
+	l := log.New(os.Stdout, "product-api ", log.LstdFlags)
 
-	http.HandleFunc("/bye", func(rw http.ResponseWriter, r *http.Request) {
-		log.Println("Goodbye Corona")
-	})
+	hh := handlers.NewHello(l)
+	gb := handlers.NewGoodBye(l)
+
+	 sm := http.NewServeMux()
+	 sm.Handle("/", hh)
+	 sm.Handle("/bye", gb)
+
+	server := &http.Server{
+		Addr: ":8080",
+		Handler: sm,
+		IdleTimeout:120*time.Second,
+		ReadTimeout: 1*time.Second,
+		WriteTimeout:1*time.Second,
+	}
 
 	fmt.Println("Server running on http://localhost:8080/" )
 	log.Println(" Server started at ", time.Now().String())
-	http.ListenAndServe(":8080", nil)
+	go func() {
+		err := server.ListenAndServe()
+		if err != nil {
+			l.Fatal(err)
+		}
+	}()
+
+	// Graceful shutdown
+	sigChan := make(chan os.Signal)
+	signal.Notify(sigChan, os.Interrupt)
+	signal.Notify(sigChan, os.Kill)
+
+	sig := <-sigChan
+	l.Println("Graceful shutdown", sig)
+
+	 ctx, _ := context.WithTimeout(context.Background(), 30*time.Second)
+	_ = server.Shutdown(ctx)
 }
