@@ -15,6 +15,6 @@ func NewGoodBye(l *log.Logger)  *GoodBye{
 }
 
 func (g *GoodBye) ServeHTTP( rw http.ResponseWriter, r *http.Request)  {
-	g.l.Println("GoodBye ")
-	fmt.Fprintf(rw, "GoodBye corona")
+	g.l.Println("goodbye ")
+	fmt.Fprintf(rw, "goodbye corona")
 }

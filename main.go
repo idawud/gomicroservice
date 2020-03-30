@@ -17,10 +17,12 @@ func main() {
 
 	hh := handlers.NewHello(l)
 	gb := handlers.NewGoodBye(l)
+	pr := handlers.NewProducts(l)
 
 	 sm := http.NewServeMux()
 	 sm.Handle("/", hh)
 	 sm.Handle("/bye", gb)
+	 sm.Handle("/product", pr)
 
 	server := &http.Server{
 		Addr: ":8080",
