@@ -18,6 +18,10 @@ type Product struct {
 	DeletedOn string 	`json:"-"`
 }
 
+func (p *Product) Error() string {
+	panic("implement me")
+}
+
 type Products []*Product
 
 func (p *Products) ToJSON(w io.Writer) error {
@@ -27,8 +31,8 @@ func (p *Products) ToJSON(w io.Writer) error {
 }
 
 func (p *Product) FromJSON(r io.Reader) error {
-	encoder := json.NewDecoder(r)
-	err := encoder.Decode(p)
+	decoder := json.NewDecoder(r)
+	err := decoder.Decode(p)
 	return err
 }
 

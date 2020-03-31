@@ -1,9 +1,12 @@
 package handlers
 
 import (
+	"context"
+	"github.com/gorilla/mux"
 	"github.com/idawud/gomicroservice/data"
 	"log"
 	"net/http"
+	"strconv"
 )
 
 type Products struct {
@@ -14,21 +17,8 @@ func NewProducts(l *log.Logger)  *Products {
 	return &Products{l}
 }
 
-func (p *Products) ServeHTTP( rw http.ResponseWriter, r *http.Request)  {
-	if r.Method == http.MethodGet {
-		p.getProduct(rw, r)
-		return
-	}
-	if r.Method == http.MethodPost {
-		p.addProduct(rw, r)
-		return
-	}
 
-	p.l.Println(r.Method + " Not Allowed")
-	rw.WriteHeader(http.StatusMethodNotAllowed)
-}
-
-func (p *Products) getProduct( rw http.ResponseWriter, r *http.Request)  {
+func (p *Products) GetProduct( rw http.ResponseWriter, r *http.Request)  {
 	p.l.Println("Products Get")
 	lp := data.GetProducts()
 	err := lp.ToJSON(rw)
@@ -37,12 +27,39 @@ func (p *Products) getProduct( rw http.ResponseWriter, r *http.Request)  {
 	}
 }
 
-func (p *Products) addProduct(rw http.ResponseWriter, r *http.Request) {
+func (p *Products) AddProduct(rw http.ResponseWriter, r *http.Request) {
 	p.l.Println("Products Post")
-	prod := &data.Product{}
-	err := prod.FromJSON(r.Body)
-	if err != nil{
-		http.Error(rw, "Unable to marshal to json", http.StatusBadRequest)
+	prod := r.Context().Value(KeyProduct{}).(data.Product)
+	data.AddNewProduct(&prod)
+}
+
+func (p Products) UpdateProduct(rw http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	p.l.Println("Products with id ", vars["id"])
+	id, err := strconv.Atoi(vars["id"])
+
+	if err != nil {
+		http.Error(rw, "Invalid id", http.StatusBadRequest)
 	}
-	data.AddNewProduct(prod)
+	prod := r.Context().Value(KeyProduct{}).(data.Product)
+	_, err = data.UpdateProduct(id, &prod)
+	if err != nil {
+		http.Error(rw, err.Error(), http.StatusBadRequest)
+	}
+}
+
+type KeyProduct struct {}
+
+func (p Products) MiddlewareProductValidation( next http.Handler) http.Handler{
+	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		prod := data.Product{}
+		err := prod.FromJSON(r.Body)
+		if err != nil {
+			http.Error(rw, "Unable to process json ::" + err.Error(), http.StatusBadRequest)
+			return
+		}
+		ctx := context.WithValue(r.Context(), KeyProduct{}, prod)
+		req := r.WithContext(ctx)
+		next.ServeHTTP(rw, req)
+	})
 }
