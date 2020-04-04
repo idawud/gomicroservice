@@ -16,26 +16,43 @@ func RunConcurrency() {
 	wg := &sync.WaitGroup{}
 	m := &sync.RWMutex{}
 
-	for i:= 0; i < 6; i++ {
+	cacheCh := make(chan data.Book)
+	dbCh := make(chan data.Book)
+
+	for i:= 0; i < 34; i++ {
 		id := rnd.Intn(6) + 1
 		wg.Add(2)
 
-		go func(id int, wg *sync.WaitGroup, m *sync.RWMutex){
+		go func(id int, wg *sync.WaitGroup, m *sync.RWMutex, ch chan<- data.Book){
 			if b, ok := queryCache(id, m); ok {
-				fmt.Println("From Cache: " )
-				fmt.Println(b.String())
+				ch <- b
 			}
 			wg.Done()
-		}(id, wg, m)
+		}(id, wg, m,  cacheCh)
 
-		go func(id int,  wg *sync.WaitGroup, m *sync.RWMutex) {
-			if b, ok := queryDatabase(id, m); ok {
-				fmt.Println("From Database: ")
-				fmt.Println(b)
+		go func(id int, wg *sync.WaitGroup, m *sync.RWMutex, ch chan<- data.Book) {
+			if b, ok := queryDatabase(id); ok {
+				m.Lock()
+				cache[id] = b
+				m.Unlock()
+				ch <- b
 			}
 			wg.Done()
-		}(id, wg, m)
+		}(id, wg, m, dbCh)
 
+		// create one goroutine per query to handle response
+		go func(cacheCh, dbCh <-chan data.Book) {
+			select {
+				case b := <-cacheCh:
+					fmt.Println("from cache")
+					fmt.Println(b)
+					<-dbCh
+				case b := <-dbCh:
+					fmt.Println("from database")
+					fmt.Println(b)
+			}
+		}( cacheCh, dbCh)
+		time.Sleep(120*time.Microsecond)
 	}
 	wg.Wait()
 }
@@ -47,13 +64,10 @@ func queryCache(id int, m *sync.RWMutex) (data.Book, bool) {
 	return b, ok
 }
 
-func queryDatabase(id int, m *sync.RWMutex) (data.Book, bool) {
+func queryDatabase(id int) (data.Book, bool) {
 	time.Sleep(100 * time.Microsecond) // artificial simulation
 	for _, b := range data.Books {
 		if b.ID == id {
-			m.Lock()
-			cache[id] = b
-			m.Unlock()
 			return b, true
 		}
 	}
