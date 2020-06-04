@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"github.com/gorilla/mux"
 	"github.com/idawud/gomicroservice/data"
 	"log"
@@ -18,12 +19,34 @@ func NewProducts(l *log.Logger)  *Products {
 }
 
 
-func (p *Products) GetProduct( rw http.ResponseWriter, r *http.Request)  {
+func (p *Products) GetProducts( rw http.ResponseWriter, r *http.Request)  {
 	p.l.Println("Products Get")
 	lp := data.GetProducts()
 	err := lp.ToJSON(rw)
 	if err != nil{
 		http.Error(rw, "Unable to marshal to json", http.StatusInternalServerError)
+	}
+}
+
+func (p *Products) GetProduct( rw http.ResponseWriter, r *http.Request)  {
+	vars := mux.Vars(r)
+	p.l.Println("Product with id ", vars["id"])
+	id, err := strconv.Atoi(vars["id"])
+
+	if err != nil {
+		http.Error(rw, "Invalid id", http.StatusBadRequest)
+	}
+
+	product, err := data.GetProduct(id)
+
+	if err != nil {
+		http.Error(rw, err.Error(), http.StatusNotFound)
+	}else {
+		rw.Header().Set("Content-Type", "application/json")
+		err = json.NewEncoder(rw).Encode(product)
+		if err != nil {
+			http.Error(rw, err.Error(), http.StatusInternalServerError)
+		}
 	}
 }
 

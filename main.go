@@ -20,7 +20,8 @@ func main() {
 
 	 sm := mux.NewRouter()
 	 getRouter := sm.Methods(http.MethodGet).Subrouter()
-	 getRouter.HandleFunc("/", pr.GetProduct)
+	 getRouter.HandleFunc("/", pr.GetProducts)
+	 getRouter.HandleFunc(`/{id:[0-9]+}`, pr.GetProduct)
 
 	 putRouter := sm.Methods(http.MethodPut).Subrouter()
 	 putRouter.HandleFunc(`/{id:[0-9]+}`, pr.UpdateProduct)

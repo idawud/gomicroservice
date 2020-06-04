@@ -48,9 +48,26 @@ func AddNewProduct(p *Product)  {
 	productList = append(productList, p)
 }
 
+func findProduct(id int)  (int, error){
+	for index, p := range productList{
+		if id == p.ID {
+			return index, nil
+		}
+	}
+	return -1, fmt.Errorf("Product With id %d Not Found", id)
+}
+
 func getNextID() int {
 	lp := productList[len(productList) -1]
 	return lp.ID + 1
+}
+
+func GetProduct(id int) (*Product, error)  {
+	pos, err := findProduct(id)
+	if err != nil{
+		return nil, err
+	}
+	return productList[pos], nil
 }
 
 func UpdateProduct(id int, p *Product) (*Product, error)  {
@@ -66,15 +83,6 @@ func UpdateProduct(id int, p *Product) (*Product, error)  {
 	productList[pos].UpdatedOn = time.Now().UTC().String()
 
 	return productList[pos], nil
-}
-
-func findProduct(id int)  (int, error){
-	for index, p := range productList{
-		if id == p.ID {
-			return index, nil
-		}
-	}
-	return -1, fmt.Errorf("Product With id %d Not Found", id)
 }
 
 var productList = []*Product{
